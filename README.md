@@ -35,3 +35,26 @@ COMPANY_INBOX_EMAIL = "info@evfieldservice.it"
 Su Streamlit Cloud i file possono sparire se l’app viene riavviata:
 - conserva sempre l’Excel localmente
 - scarica `bookings.csv` ogni tanto
+
+## Regioni supportate (nomi)
+
+- Abruzzo
+- Basilicata
+- Calabria
+- Campania
+- Emilia-Romagna
+- Friuli-Venezia Giulia
+- Lazio
+- Liguria
+- Lombardia
+- Marche
+- Molise
+- Piemonte
+- Puglia
+- Sardegna
+- Sicilia
+- Toscana
+- Trentino-Alto Adige/Südtirol
+- Umbria
+- Valle d'Aosta/Vallée d'Aoste
+- Veneto

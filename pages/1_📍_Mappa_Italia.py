@@ -42,7 +42,15 @@ if df.empty:
     st.stop()
 
 geojson = load_geojson(Path("data/italy_regions.geojson"))
-counts = df.groupby("regione", as_index=False).size().rename(columns={"size":"lead_count"})
+
+# Normalizza nomi regione (case-insensitive) per far combaciare Excel con GeoJSON
+geo_regions = sorted({f.get("properties", {}).get("reg_name") for f in geojson.get("features", []) if f.get("properties", {}).get("reg_name")})
+canon = {str(name).casefold(): str(name) for name in geo_regions}
+df["regione"] = df["regione"].astype(str).str.strip()
+df["regione_canon"] = df["regione"].apply(lambda x: canon.get(str(x).casefold(), str(x)))
+
+counts = df.groupby("regione_canon", as_index=False).size().rename(columns={"size":"lead_count", "regione_canon":"regione"})
+
 
 st.subheader("Clicca una regione")
 fig = px.choropleth(
@@ -74,7 +82,7 @@ if not selected_region:
 st.divider()
 st.subheader(f"Lead disponibili in: {selected_region}")
 
-sub = df[df["regione"] == selected_region].copy()
+sub = df[df["regione_canon"] == selected_region].copy()
 sub = sub.sort_values(by=["budget_eur","metri_mq"], ascending=[False, False], na_position="last")
 
 cols_show = ["lead_id","citta","metri_mq","tipologia","budget_eur","note"]
