@@ -1,14 +1,11 @@
 import streamlit as st
-import plotly.express as px
-from streamlit_plotly_events import plotly_events
-from pathlib import Path
 
 from utils.auth import require_code
-from utils.store import load_leads_xlsx, load_geojson, is_lead_booked, append_booking
+from utils.store import load_leads_xlsx, is_lead_booked, append_booking
 from utils.notify import can_send_email, send_booking_notifications
 
 st.set_page_config(page_title="Installatori", layout="wide")
-st.header("📍 Area Installatori")
+st.header("🧩 Seleziona Regione — Area Installatori")
 
 if not require_code("installer"):
     st.stop()
@@ -23,17 +20,17 @@ with st.sidebar:
     st.session_state["installer_phone"] = installer_phone
     hide_booked = st.checkbox("Nascondi lead già prenotati", value=True)
 
-df = load_leads_xlsx()
-df = df.copy()
+df = load_leads_xlsx().copy()
 df.columns = [c.lower() for c in df.columns]
 
 required = {"lead_id","regione","citta","metri_mq","tipologia","budget_eur"}
 if not required.issubset(set(df.columns)):
-    st.error("Non trovo un Excel valido. Vai in **🛠️ Area Admin** e carica l'Excel usando il template.")
+    st.error("Non trovo un Excel valido. Vai su **➕ Inserisci Lead (Admin)** e carica l'Excel usando il template.")
     st.stop()
 
 df["lead_id"] = df["lead_id"].astype(str).str.strip()
 df["regione"] = df["regione"].astype(str).str.strip()
+df["regione_key"] = df["regione"].apply(lambda x: str(x).casefold())
 
 if hide_booked:
     df = df[~df["lead_id"].apply(is_lead_booked)]
@@ -42,40 +39,35 @@ if df.empty:
     st.info("Nessun lead disponibile (o sono tutti prenotati).")
     st.stop()
 
-geojson = load_geojson(Path("data/italy_regions.geojson"))
-counts = df.groupby("regione", as_index=False).size().rename(columns={"size":"lead_count"})
-
-st.subheader("Mappa Italia (clicca una regione)")
-fig = px.choropleth(
-    counts,
-    geojson=geojson,
-    featureidkey="properties.reg_name",
-    locations="regione",
-    color="lead_count",
-    scope="europe",
-    fitbounds="locations",
-    labels={"lead_count":"Lead"},
+agg = (
+    df.groupby("regione_key", as_index=False)
+      .agg(lead_count=("lead_id","count"), regione_display=("regione","first"))
+      .sort_values("lead_count", ascending=False)
 )
-fig.update_geos(visible=False)
-fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 
-selected = plotly_events(fig, click_event=True, hover_event=False, select_event=False, override_height=520, override_width="100%")
+st.subheader("Scegli la tua regione")
+st.caption("Clicca su un box. Tra parentesi vedi quanti lead disponibili ci sono.")
 
-selected_region = st.session_state.get("selected_region")
-if selected and len(selected) > 0:
-    loc = selected[0].get("location")
-    if loc:
-        selected_region = loc
-        st.session_state["selected_region"] = selected_region
+cols = st.columns(4)
+selected_key = st.session_state.get("selected_region_key")
 
-if not selected_region:
-    selected_region = counts.sort_values("lead_count", ascending=False).iloc[0]["regione"]
-    st.session_state["selected_region"] = selected_region
+for i, row in enumerate(agg.itertuples(index=False)):
+    col = cols[i % 4]
+    label = f"{row.regione_display} ({int(row.lead_count)})"
+    if col.button(label, use_container_width=True):
+        selected_key = row.regione_key
+        st.session_state["selected_region_key"] = selected_key
+
+if not selected_key:
+    selected_key = agg.iloc[0]["regione_key"]
+    st.session_state["selected_region_key"] = selected_key
+
+selected_display = agg.loc[agg["regione_key"] == selected_key, "regione_display"].iloc[0]
 
 st.divider()
-st.subheader(f"Lead in: {selected_region}")
+st.subheader(f"Lead disponibili in: {selected_display}")
 
-sub = df[df["regione"] == selected_region].copy()
+sub = df[df["regione_key"] == selected_key].copy()
 sub = sub.sort_values(by=["budget_eur","metri_mq"], ascending=[False, False], na_position="last")
 
 cols_show = ["lead_id","citta","metri_mq","tipologia","budget_eur","note"]
@@ -104,12 +96,13 @@ if ok:
     append_booking(lead_row, installer, note=note)
 
     if can_send_email():
-        subj = f"[Lead prenotato] {lead_id} - {selected_region}"
+        subj = f"[Lead prenotato] {lead_id} - {selected_display}"
         body = (
             f"Lead: {lead_id}\n"
-            f"Regione: {selected_region}\n"
+            f"Regione: {selected_display}\n"
             f"Città: {lead_row.get('citta','')}\n"
             f"Tipologia: {lead_row.get('tipologia','')}\n"
+            f"Metri (mq): {lead_row.get('metri_mq','')}\n"
             f"Budget: {lead_row.get('budget_eur','')}\n\n"
             f"Installatore: {installer_name}\n"
             f"Email: {installer_email}\n"
@@ -118,8 +111,9 @@ if ok:
         )
         try:
             send_booking_notifications(subj, body, requester_email=installer_email)
-        except Exception:
-            pass
+            st.info("Email inviata a te e a info@evfieldservice.it")
+        except Exception as e:
+            st.error(f"Invio email fallito: {e}")
 
-    st.success("Prenotazione registrata! L'admin la vede in 🛠️ Area Admin.")
+    st.success("Prenotazione registrata! L'admin la vede in ➕ Inserisci Lead (Admin).")
     st.rerun()
