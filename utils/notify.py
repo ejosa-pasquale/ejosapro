@@ -1,7 +1,7 @@
 from __future__ import annotations
 import smtplib
 from email.message import EmailMessage
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from .config import (
     SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_TLS, SMTP_SSL,
@@ -9,7 +9,7 @@ from .config import (
 )
 
 def can_send_email() -> bool:
-    return bool(SMTP_HOST and (COMPANY_INBOX_EMAIL or ADMIN_NOTIFY_EMAIL))
+    return bool(SMTP_HOST and SMTP_PORT and SMTP_USER and SMTP_PASSWORD and COMPANY_INBOX_EMAIL)
 
 def _normalize(to: Iterable[str]) -> List[str]:
     out: List[str] = []
@@ -21,29 +21,31 @@ def _normalize(to: Iterable[str]) -> List[str]:
             out.append(x)
     return out
 
-def send_email(subject: str, body: str, to: Iterable[str]) -> None:
+def send_email(subject: str, body: str, to: Iterable[str], *, from_addr: Optional[str]=None) -> None:
     recipients = _normalize(to)
-    if not SMTP_HOST or not recipients:
-        return
+    if not SMTP_HOST:
+        raise RuntimeError("SMTP_HOST mancante.")
+    if not SMTP_USER or not SMTP_PASSWORD:
+        raise RuntimeError("SMTP_USER/SMTP_PASSWORD mancanti.")
+    if not recipients:
+        raise RuntimeError("Nessun destinatario valido.")
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = SMTP_USER or (ADMIN_NOTIFY_EMAIL or COMPANY_INBOX_EMAIL)
+    msg["From"] = from_addr or SMTP_USER  # Aruba: meglio che sia la stessa casella autenticata
     msg["To"] = ", ".join(recipients)
     msg.set_content(body)
 
     if SMTP_SSL:
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as server:
-            if SMTP_USER and SMTP_PASSWORD:
-                server.login(SMTP_USER, SMTP_PASSWORD)
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=25) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
         return
 
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=25) as server:
         if SMTP_TLS:
             server.starttls()
-        if SMTP_USER and SMTP_PASSWORD:
-            server.login(SMTP_USER, SMTP_PASSWORD)
+        server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(msg)
 
 def send_booking_notifications(subject: str, body: str, requester_email: str) -> None:
@@ -52,4 +54,7 @@ def send_booking_notifications(subject: str, body: str, requester_email: str) ->
 
 def send_leads_digest(subject: str, body: str) -> None:
     # a info@evfieldservice.it + (opzionale) admin
-    send_email(subject, body, [COMPANY_INBOX_EMAIL, ADMIN_NOTIFY_EMAIL])
+    recipients = [COMPANY_INBOX_EMAIL]
+    if ADMIN_NOTIFY_EMAIL:
+        recipients.append(ADMIN_NOTIFY_EMAIL)
+    send_email(subject, body, recipients)

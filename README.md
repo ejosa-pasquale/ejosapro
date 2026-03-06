@@ -26,7 +26,7 @@ COMPANY_INBOX_EMAIL = "info@evfieldservice.it"
 
 ## Uso
 1) Admin: apri **➕ Inserisci Lead (Admin)** → scarica template → carica Excel compilato  
-2) Installatori: aprono **📍 Mappa Italia** → scelgono regione → **Prenota**  
+2) Installatori: aprono **🧩 Seleziona Regione (box)** → scelgono regione → **Prenota**  
 3) Alla prenotazione parte una mail a:
 - email installatore
 - info@evfieldservice.it

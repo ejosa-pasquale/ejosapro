@@ -64,6 +64,19 @@ else:
 st.divider()
 st.subheader("4) Email con tutti i lead (opzionale)")
 st.write("Invia un riepilogo a **info@evfieldservice.it** (e opzionalmente a `ADMIN_NOTIFY_EMAIL`).")
+
+st.markdown("#### Test invio email")
+st.write("Premi per inviare una mail di test a **info@evfieldservice.it** (e a te se hai impostato `ADMIN_NOTIFY_EMAIL`).")
+if can_send_email():
+    if st.button("📨 Invia email di TEST"):
+        try:
+            send_leads_digest("TEST SMTP e-josa", "Questa è una mail di test inviata dalla webapp Streamlit.")
+            st.success("Mail di test inviata.")
+        except Exception as e:
+            st.error(f"Mail di test fallita: {e}")
+else:
+    st.warning("SMTP non configurato (controlla SMTP_HOST/PORT/USER/PASSWORD e COMPANY_INBOX_EMAIL).")
+
 if can_send_email() and not df_current.empty:
     if st.button("✉️ Invia email riepilogo lead"):
         cols = [c for c in ["lead_id","regione","citta","metri_mq","tipologia","budget_eur"] if c in df_current.columns]
