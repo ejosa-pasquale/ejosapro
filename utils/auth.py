@@ -2,6 +2,7 @@ import streamlit as st
 from .config import ADMIN_CODE, INSTALLER_CODE
 
 def require_code(kind: str) -> bool:
+    """Simple code-based access: kind in {'admin','installer'}."""
     key = f"authed_{kind}"
     if st.session_state.get(key):
         return True

@@ -2,16 +2,16 @@ import streamlit as st
 
 st.set_page_config(page_title="e-josa Lead Booking", layout="wide")
 
-st.title("e-josa — Lead Booking (caricamento Excel)")
+st.title("e-josa — Lead Booking (Excel + prenotazione)")
 
 st.markdown(
-    """Questa versione è pensata per essere **semplicissima**:
+    """**Come funziona:**
+- Tu carichi un **Excel** (ogni giorno) con i lead.
+- Gli installatori cliccano una **regione** e fanno **Prenota** (booking).
+- Quando prenotano, parte una mail **all’installatore** e a **info@evfieldservice.it** (se SMTP è impostato).
 
-- ogni giorno vai in **🛠️ Area Admin** e carichi un **Excel** con i lead
-- gli installatori vanno in **📍 Area Installatori**, cliccano una regione e fanno **Prenota**
-
-Nessun collegamento con e-josa.it, nessuna API esterna.
+Apri una pagina dal menu a sinistra.
 """
 )
 
-st.info("Apri una pagina dal menu a sinistra.")
+st.info("Suggerimento: prima vai su **➕ Inserisci Lead (Admin)** e carica il template compilato.")

@@ -24,8 +24,7 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
         "telefono": "contatto_telefono",
         "email": "contatto_email",
     }
-    df = df.rename(columns=rename_map)
-    return df
+    return df.rename(columns=rename_map)
 
 def validate_leads_df(df: pd.DataFrame):
     df = _normalize_columns(df)
@@ -47,8 +46,8 @@ def load_leads_xlsx() -> pd.DataFrame:
     if not LEADS_XLSX.exists():
         return pd.DataFrame(columns=REQUIRED_COLUMNS)
     df = pd.read_excel(LEADS_XLSX)
-    ok, _, df = validate_leads_df(df)
-    return df if ok else df
+    ok, _, df2 = validate_leads_df(df)
+    return df2 if ok else df
 
 def _init_bookings_if_missing():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -56,6 +55,11 @@ def _init_bookings_if_missing():
         pd.DataFrame(columns=[
             "booked_at","lead_id","regione","installer_name","installer_email","installer_phone","note"
         ]).to_csv(BOOKINGS_CSV, index=False)
+
+def is_lead_booked(lead_id: str) -> bool:
+    _init_bookings_if_missing()
+    df = pd.read_csv(BOOKINGS_CSV)
+    return (df["lead_id"].astype(str) == str(lead_id)).any()
 
 def append_booking(lead_row: dict, installer: dict, note: str="") -> None:
     _init_bookings_if_missing()
@@ -75,8 +79,3 @@ def append_booking(lead_row: dict, installer: dict, note: str="") -> None:
 def load_bookings() -> pd.DataFrame:
     _init_bookings_if_missing()
     return pd.read_csv(BOOKINGS_CSV)
-
-def is_lead_booked(lead_id: str) -> bool:
-    _init_bookings_if_missing()
-    df = pd.read_csv(BOOKINGS_CSV)
-    return (df["lead_id"].astype(str) == str(lead_id)).any()

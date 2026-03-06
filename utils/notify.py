@@ -9,9 +9,9 @@ from .config import (
 )
 
 def can_send_email() -> bool:
-    return bool(SMTP_HOST and (ADMIN_NOTIFY_EMAIL or COMPANY_INBOX_EMAIL))
+    return bool(SMTP_HOST and (COMPANY_INBOX_EMAIL or ADMIN_NOTIFY_EMAIL))
 
-def _normalize_recipients(to: Iterable[str]) -> List[str]:
+def _normalize(to: Iterable[str]) -> List[str]:
     out: List[str] = []
     for x in to:
         if not x:
@@ -22,14 +22,14 @@ def _normalize_recipients(to: Iterable[str]) -> List[str]:
     return out
 
 def send_email(subject: str, body: str, to: Iterable[str]) -> None:
-    to_list = _normalize_recipients(to)
-    if not SMTP_HOST or not to_list:
+    recipients = _normalize(to)
+    if not SMTP_HOST or not recipients:
         return
 
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = SMTP_USER or (ADMIN_NOTIFY_EMAIL or COMPANY_INBOX_EMAIL)
-    msg["To"] = ", ".join(to_list)
+    msg["To"] = ", ".join(recipients)
     msg.set_content(body)
 
     if SMTP_SSL:
@@ -47,11 +47,9 @@ def send_email(subject: str, body: str, to: Iterable[str]) -> None:
         server.send_message(msg)
 
 def send_booking_notifications(subject: str, body: str, requester_email: str) -> None:
-    # Invia SEMPRE a chi prenota + alla mailbox aziendale (default: info@evfieldservice.it)
-    recipients = [requester_email, COMPANY_INBOX_EMAIL]
-    send_email(subject, body, recipients)
+    # a chi prenota + a info@evfieldservice.it
+    send_email(subject, body, [requester_email, COMPANY_INBOX_EMAIL])
 
 def send_leads_digest(subject: str, body: str) -> None:
-    # Invia un riepilogo all'admin (se impostato) + mailbox aziendale
-    recipients = [ADMIN_NOTIFY_EMAIL, COMPANY_INBOX_EMAIL]
-    send_email(subject, body, recipients)
+    # a info@evfieldservice.it + (opzionale) admin
+    send_email(subject, body, [COMPANY_INBOX_EMAIL, ADMIN_NOTIFY_EMAIL])
