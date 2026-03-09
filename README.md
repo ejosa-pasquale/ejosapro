@@ -25,7 +25,9 @@ COMPANY_INBOX_EMAIL = "info@evfieldservice.it"
 ```
 
 ## Uso
-1) Admin: apri **➕ Inserisci Lead (Admin)** → scarica template → carica Excel compilato  
+1) Admin: apri **➕ Inserisci Lead (Admin)** → puoi:
+   - caricare **PDF** (preventivi) e far generare/aggiornare automaticamente la lista lead
+   - oppure scaricare template e caricare **Excel** compilato
 2) Installatori: aprono **🧩 Seleziona Regione (box)** → scelgono regione → **Prenota**  
 3) Alla prenotazione parte una mail a:
 - email installatore

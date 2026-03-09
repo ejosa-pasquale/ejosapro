@@ -1,9 +1,17 @@
 import streamlit as st
 import pandas as pd
+import io
 
 from utils.auth import require_code
 from utils.store import save_leads_xlsx, load_leads_xlsx, validate_leads_df, REQUIRED_COLUMNS, load_bookings
+from utils.pdf_ingest import parse_many_pdfs
 from utils.notify import can_send_email, send_leads_digest
+
+
+def _df_to_xlsx_bytes(df: pd.DataFrame) -> bytes:
+    buf = io.BytesIO()
+    df.to_excel(buf, index=False, engine="openpyxl")
+    return buf.getvalue()
 
 st.set_page_config(page_title="Admin", layout="wide")
 st.header("🛠️ Area Admin")
@@ -12,6 +20,42 @@ if not require_code("admin"):
     st.stop()
 
 st.subheader("Carica Excel dei lead")
+
+st.markdown("### Carica PDF (preventivi) → aggiorna automaticamente i lead")
+pdfs = st.file_uploader("Carica PDF (.pdf)", type=["pdf"], accept_multiple_files=True)
+if pdfs:
+    with st.spinner("Analizzo i PDF e aggiorno i lead..."):
+        files = [(f.name, f.getvalue()) for f in pdfs]
+        rows = parse_many_pdfs(files)
+        df_new = pd.DataFrame(rows)
+
+        ok, _, df_new = validate_leads_df(df_new)
+        df_new.columns = [c.lower() for c in df_new.columns]
+        for c in REQUIRED_COLUMNS:
+            if c not in df_new.columns:
+                df_new[c] = ""
+
+        df_old = load_leads_xlsx().copy()
+        df_old.columns = [c.lower() for c in df_old.columns]
+        for c in REQUIRED_COLUMNS:
+            if c not in df_old.columns:
+                df_old[c] = ""
+
+        df_merged = pd.concat([df_old, df_new], ignore_index=True)
+        df_merged["lead_id"] = df_merged["lead_id"].astype(str).str.strip()
+        df_merged = df_merged.drop_duplicates(subset=["lead_id"], keep="last")
+        save_leads_xlsx(df_merged[REQUIRED_COLUMNS])
+
+    st.success(f"Import PDF completato: {len(df_new)} lead letti, totale lead ora: {len(df_merged)}")
+    st.dataframe(df_new[REQUIRED_COLUMNS], use_container_width=True, hide_index=True)
+    st.download_button(
+        "⬇️ Scarica Excel aggiornato (leads_latest.xlsx)",
+        data=_df_to_xlsx_bytes(df_merged[REQUIRED_COLUMNS]),
+        file_name="leads_latest.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+st.divider()
 with open("templates/leads_template.xlsx", "rb") as f:
     st.download_button("📥 Scarica template Excel", data=f, file_name="leads_template.xlsx")
 
