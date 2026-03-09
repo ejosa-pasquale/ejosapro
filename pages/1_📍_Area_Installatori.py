@@ -4,7 +4,7 @@ from utils.auth import require_code
 from utils.store import load_leads_xlsx, is_lead_booked, append_booking
 from utils.notify import can_send_email, send_booking_notifications
 
-st.set_page_config(page_title="Installatori", layout="wide")
+st.set_page_config(page_title="Installatori/Partner", layout="wide")
 st.header("🧩 Seleziona Regione — Area Installatori")
 
 if not require_code("installer"):
